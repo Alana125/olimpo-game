@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Bem-vindo ao Olimpo</title>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: "Trebuchet MS", Arial, sans-serif;
+            background: #101326;
+            color: #fff8e6;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        body {
+            min-width: 320px;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            background: #101326;
+        }
+
+        #game-root {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            background: #101326;
+        }
+
+        #game-root canvas {
+            display: block;
+            max-width: 100vw;
+            max-height: 100vh;
+            image-rendering: pixelated;
+        }
+
+        .welcome-screen {
+            position: fixed;
+            z-index: 2;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            overflow-y: auto;
+            padding: 28px;
+            background:
+                linear-gradient(180deg, rgba(12, 18, 42, .72), rgba(15, 14, 35, .9)),
+                url("assets/olimpozeus.png") center 48% / cover;
+        }
+
+        .welcome-content {
+            width: min(1080px, 100%);
+            margin: auto;
+            text-align: center;
+        }
+
+        .eyebrow {
+            margin: 0 0 10px;
+            color: #ffe28a;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .3em;
+            text-transform: uppercase;
+        }
+
+        h1 {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: clamp(38px, 6vw, 68px);
+            line-height: 1.05;
+            text-shadow: 0 4px 24px rgba(0, 0, 0, .55);
+        }
+
+        h1 span {
+            color: #ffdf86;
+        }
+
+        .intro-copy {
+            max-width: 600px;
+            margin: 14px auto 28px;
+            color: #e2e8ff;
+            font-size: clamp(15px, 2vw, 18px);
+            line-height: 1.6;
+        }
+
+        .god-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+        }
+
+        .god-card {
+            position: relative;
+            display: flex;
+            min-height: 330px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            overflow: hidden;
+            padding: 18px 20px 22px;
+            border: 1px solid rgba(255, 255, 255, .24);
+            border-radius: 22px;
+            background-position: center;
+            background-size: cover;
+            box-shadow: 0 18px 42px rgba(0, 0, 0, .34);
+            color: #fff;
+            cursor: pointer;
+            isolation: isolate;
+            text-align: center;
+            transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+        }
+
+        .god-card::before {
+            position: absolute;
+            z-index: -1;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(10, 12, 28, .12) 5%, rgba(10, 12, 28, .45) 43%, rgba(10, 12, 28, .96) 100%);
+            content: "";
+        }
+
+        .god-card:hover,
+        .god-card:focus-visible {
+            transform: translateY(-7px);
+            border-color: #ffe28a;
+            box-shadow: 0 22px 50px rgba(0, 0, 0, .5), 0 0 0 2px rgba(255, 226, 138, .25);
+            outline: none;
+        }
+
+        .god-card.zeus {
+            background-image: url("assets/olimpozeus.png");
+        }
+
+        .god-card.hades {
+            background-image: url("assets/espacohades.jpg");
+        }
+
+        .god-card.poseidon {
+            background-image: url("assets/espacoposeidon.jpg");
+        }
+
+        .god-portrait {
+            width: auto;
+            max-width: 80%;
+            height: 156px;
+            margin: auto 0 9px;
+            object-fit: contain;
+            image-rendering: pixelated;
+            filter: drop-shadow(0 8px 10px rgba(0, 0, 0, .6));
+            transition: transform .2s ease;
+        }
+
+        .god-card:hover .god-portrait {
+            transform: translateY(-4px) scale(1.05);
+        }
+
+        .god-name {
+            margin: 0;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 30px;
+        }
+
+        .god-description {
+            margin: 5px 0 14px;
+            color: #e4e6f4;
+            font-size: 14px;
+        }
+
+        .choose-label {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 39px;
+            padding: 0 17px;
+            border: 1px solid rgba(255, 226, 138, .75);
+            border-radius: 999px;
+            background: rgba(255, 226, 138, .12);
+            color: #ffe28a;
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: .04em;
+        }
+
+        .controls-note {
+            margin: 20px 0 0;
+            color: #d3d8ef;
+            font-size: 13px;
+        }
+
+        .game-hud {
+            position: fixed;
+            z-index: 3;
+            top: 16px;
+            right: 16px;
+            left: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .hud-chip,
+        .hud-button {
+            min-height: 42px;
+            padding: 10px 15px;
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: 999px;
+            background: rgba(13, 17, 38, .82);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, .24);
+            color: #fff8e6;
+            font-size: 14px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+        }
+
+        .hud-button {
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        .hud-button:hover,
+        .hud-button:focus-visible {
+            border-color: #ffe28a;
+            color: #ffe28a;
+            outline: none;
+        }
+
+        #game-over {
+            position: fixed;
+            z-index: 4;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            padding: 20px;
+            background: rgba(8, 10, 24, .65);
+        }
+
+        .game-over-card {
+            width: min(380px, 100%);
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, .25);
+            border-radius: 20px;
+            background: #171b35;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .45);
+            text-align: center;
+        }
+
+        .game-over-card h2 {
+            margin: 0 0 8px;
+            font-family: Georgia, "Times New Roman", serif;
+            font-size: 32px;
+        }
+
+        .game-over-card p {
+            color: #d5daf0;
+        }
+
+        .primary-button {
+            min-height: 46px;
+            padding: 0 20px;
+            border: 0;
+            border-radius: 999px;
+            background: #ffdf86;
+            color: #28213a;
+            cursor: pointer;
+            font: inherit;
+            font-weight: 800;
+        }
+
+        .primary-button:hover,
+        .primary-button:focus-visible {
+            background: #fff0bd;
+            outline: 3px solid rgba(255, 223, 134, .35);
+        }
+
+        @media (max-width: 760px) {
+            body {
+                overflow: auto;
+            }
+
+            .welcome-screen {
+                align-items: start;
+                padding: 28px 16px;
+            }
+
+            .god-grid {
+                grid-template-columns: 1fr;
+                max-width: 430px;
+                margin: 0 auto;
+            }
+
+            .god-card {
+                min-height: 260px;
+            }
+
+            .god-portrait {
+                height: 130px;
+            }
+
+            .game-hud {
+                top: 8px;
+                right: 8px;
+                left: 8px;
+                gap: 6px;
+            }
+
+            .hud-chip,
+            .hud-button {
+                min-height: 38px;
+                padding: 8px 11px;
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-root" aria-label="Jogo Bem-vindo ao Olimpo"></div>
+
+    <main id="welcome" class="welcome-screen">
+        <div class="welcome-content">
+            <p class="eyebrow">Uma aventura mitológica</p>
+            <h1>Bem-vindo ao <span>Olimpo</span></h1>
+            <p class="intro-copy">Os reinos precisam de um herói. Escolha seu deus, atravesse as plataformas e reúna raios pelo caminho!</p>
+
+            <div class="god-grid" aria-label="Escolha seu personagem">
+                <button class="god-card zeus" type="button" data-god="zeus" aria-label="Jogar como Zeus">
+                    <img class="god-portrait" src="assets/portrait-zeus.png" alt="" />
+                    <h2 class="god-name">Zeus</h2>
+                    <p class="god-description">O senhor dos céus e dos raios</p>
+                    <span class="choose-label">Jogar como Zeus</span>
+                </button>
+                <button class="god-card hades" type="button" data-god="hades" aria-label="Jogar como Hades">
+                    <img class="god-portrait" src="assets/portrait-hades.png" alt="" />
+                    <h2 class="god-name">Hades</h2>
+                    <p class="god-description">Explore o reino das sombras</p>
+                    <span class="choose-label">Jogar como Hades</span>
+                </button>
+                <button class="god-card poseidon" type="button" data-god="poseidon" aria-label="Jogar como Poseidon">
+                    <img class="god-portrait" src="assets/portrait-poseidon.png" alt="" />
+                    <h2 class="god-name">Poseidon</h2>
+                    <p class="god-description">Salte pelas ruínas do oceano</p>
+                    <span class="choose-label">Jogar como Poseidon</span>
+                </button>
+            </div>
+            <p class="controls-note">No jogo: use ← → ou A / D para correr e ↑, W ou espaço para saltar.</p>
+        </div>
+    </main>
+
+    <div id="game-hud" class="game-hud" hidden>
+        <button id="back-button" class="hud-button" type="button">← Escolher deus</button>
+        <div class="hud-chip">
+            <span id="god-label">Zeus</span> ·
+            <span id="collectible-label">Raios</span>: <span id="score">0</span> ·
+            Fase <span id="phase">1</span>
+        </div>
+    </div>
+
+    <div id="game-over" hidden>
+        <div class="game-over-card">
+            <p class="eyebrow">Fim da jornada</p>
+            <h2>O Olimpo espera!</h2>
+            <p>Você reuniu <strong id="final-score">0</strong> <span id="final-collectible-label">raios</span>.</p>
+            <button id="restart-button" class="primary-button" type="button">Tentar novamente</button>
+        </div>
+    </div>
+
+    <script>
+        var GODS = {
+            zeus: {
+                name: "Zeus",
+                background: "sky-zeus",
+                platform: "platform-zeus",
+                leftTexture: "zeus-left",
+                rightTexture: "zeus-right",
+                mirrorRight: true,
+                collectibleKey: "bolt",
+                collectibleLabel: "Raios",
+                collectibleScale: 0.8,
+                scale: 0.56
+            },
+            hades: {
+                name: "Hades",
+                background: "sky-hades",
+                platform: "platform-hades",
+                leftTexture: "hades-left",
+                rightTexture: "hades-right",
+                mirrorRight: false,
+                collectibleKey: "coin-hades",
+                collectibleLabel: "Moedas",
+                collectibleScale: 0.38,
+                scale: 0.56
+            },
+            poseidon: {
+                name: "Poseidon",
+                background: "sky-poseidon",
+                platform: "platform-poseidon",
+                leftTexture: "poseidon-left",
+                rightTexture: "poseidon-right",
+                mirrorRight: true,
+                collectibleKey: "coin-poseidon",
+                collectibleLabel: "Conchas",
+                collectibleScale: 0.3,
+                scale: 0.56
+            }
+        };
+
+        var WIDTH = 960;
+        var HEIGHT = 640;
+        var selectedGod = "zeus";
+        var gameStarted = false;
+        var sceneReady = false;
+        var player;
+        var platforms;
+        var bolts;
+        var hazards;
+        var cursors;
+        var wasd;
+        var spaceKey;
+        var score = 0;
+        var phase = 1;
+        var gameOver = false;
+        var createdAnimations = {};
+        var audioContext;
+
+        var PLATFORM_LAYOUTS = [
+            [[155, 495, 270, 56], [345, 380, 230, 54], [155, 265, 270, 56],
+                [805, 495, 270, 56], [615, 380, 230, 54], [805, 265, 270, 56]],
+            [[145, 510, 250, 54], [350, 390, 230, 52], [150, 270, 250, 54],
+                [815, 510, 250, 54], [610, 390, 230, 52], [810, 270, 250, 54]],
+            [[150, 480, 250, 52], [355, 365, 220, 50], [155, 250, 250, 52],
+                [810, 480, 250, 52], [605, 365, 220, 50], [805, 250, 250, 52]]
+        ];
+
+        var config = {
+            type: Phaser.AUTO,
+            parent: "game-root",
+            width: WIDTH,
+            height: HEIGHT,
+            backgroundColor: "#11152a",
+            render: {
+                pixelArt: true,
+                antialias: false
+            },
+            physics: {
+                default: "arcade",
+                arcade: {
+                    gravity: { y: 680 },
+                    debug: false
+                }
+            },
+            scene: {
+                key: "Olympus",
+                preload: preload,
+                create: create,
+                update: update
+            }
+        };
+
+        var game = new Phaser.Game(config);
+
+        function preload() {
+            this.load.image("sky-zeus", "assets/olimpozeus.png");
+            this.load.image("sky-hades", "assets/espacohades.jpg");
+            this.load.image("sky-poseidon", "assets/espacoposeidon.jpg");
+
+            this.load.image("platform-zeus", "assets/plataformzeus-game.png");
+            this.load.image("platform-hades", "assets/platform-hades.png");
+            this.load.image("platform-poseidon", "assets/platform-poseidon.png");
+
+            this.load.image("bolt", "assets/star.png");
+            this.load.image("coin-hades", "assets/coin-hades.png");
+            this.load.image("coin-poseidon", "assets/coin-poseidon.png");
+            this.load.image("hazard", "assets/bomb-game.png");
+
+            this.load.spritesheet("zeus-left", "assets/sprite-zeus-left.png", { frameWidth: 120, frameHeight: 160 });
+            this.load.spritesheet("zeus-right", "assets/sprite-zeus-right.png", { frameWidth: 120, frameHeight: 160 });
+            this.load.spritesheet("hades-left", "assets/sprite-hades-left.png", { frameWidth: 120, frameHeight: 160 });
+            this.load.spritesheet("hades-right", "assets/sprite-hades-right.png", { frameWidth: 120, frameHeight: 160 });
+            this.load.spritesheet("poseidon-left", "assets/sprite-poseidon-left.png", { frameWidth: 120, frameHeight: 160 });
+            this.load.spritesheet("poseidon-right", "assets/sprite-poseidon-right.png", { frameWidth: 120, frameHeight: 160 });
+        }
+
+        function create() {
+            var god = GODS[selectedGod];
+            var scene = this;
+            score = 0;
+            phase = 1;
+            gameOver = false;
+            document.getElementById("score").textContent = "0";
+            document.getElementById("phase").textContent = "1";
+            document.getElementById("god-label").textContent = god.name;
+            document.getElementById("collectible-label").textContent = god.collectibleLabel;
+            document.getElementById("final-collectible-label").textContent = god.collectibleLabel.toLowerCase();
+            document.getElementById("game-over").hidden = true;
+
+            this.physics.world.setBounds(0, 0, WIDTH, HEIGHT);
+            this.add.image(WIDTH / 2, HEIGHT / 2, god.background).setDisplaySize(WIDTH, HEIGHT);
+
+            platforms = this.physics.add.staticGroup();
+            addPlatform(this, 480, 620, 960, 72, god.platform);
+            PLATFORM_LAYOUTS[0].forEach(function (position) {
+                addPlatform(scene, position[0], position[1], position[2], position[3], god.platform);
+            });
+
+            player = this.physics.add.sprite(480, 530, god.rightTexture, 0).setScale(god.scale);
+            player.setBounce(0.06);
+            player.setCollideWorldBounds(true);
+            player.body.setSize(68, 110);
+            player.body.setOffset(26, 36);
+
+            addWalkAnimation(this, selectedGod, god.leftTexture, "left");
+            addWalkAnimation(this, selectedGod, god.rightTexture, "right");
+
+            cursors = this.input.keyboard.createCursorKeys();
+            wasd = this.input.keyboard.addKeys("W,A,S,D");
+            spaceKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+            bolts = this.physics.add.group({
+                key: god.collectibleKey,
+                repeat: 9,
+                setXY: { x: 45, y: 20, stepX: 96 }
+            });
+            bolts.children.iterate(function (bolt) {
+                bolt.setScale(god.collectibleScale);
+                bolt.setBounceY(Phaser.Math.FloatBetween(0.35, 0.75));
+            });
+
+            hazards = this.physics.add.group();
+            this.physics.add.collider(player, platforms);
+            this.physics.add.collider(bolts, platforms);
+            this.physics.add.collider(hazards, platforms);
+            this.physics.add.collider(player, hazards, hitHazard, null, this);
+            this.physics.add.overlap(player, bolts, collectCollectible, null, this);
+
+            sceneReady = true;
+            if (!gameStarted) {
+                this.scene.pause();
+            }
+        }
+
+        function addPlatform(scene, x, y, width, height, texture) {
+            platforms.create(x, y, texture)
+                .setDisplaySize(width, height)
+                .refreshBody();
+        }
+
+        function setPlatformLayout(scene, layoutIndex) {
+            var layout = PLATFORM_LAYOUTS[layoutIndex];
+            var platformSprites = platforms.getChildren();
+            layout.forEach(function (position, index) {
+                platformSprites[index + 1]
+                    .setPosition(position[0], position[1])
+                    .setDisplaySize(position[2], position[3])
+                    .refreshBody();
+            });
+        }
+
+        function addWalkAnimation(scene, godKey, textureKey, direction) {
+            var animationKey = godKey + "-walk-" + direction;
+            if (createdAnimations[animationKey]) {
+                return;
+            }
+
+            scene.anims.create({
+                key: animationKey,
+                frames: scene.anims.generateFrameNumbers(textureKey, { start: 0, end: 4 }),
+                frameRate: 9,
+                repeat: -1
+            });
+            createdAnimations[animationKey] = true;
+        }
+
+        function update() {
+            if (gameOver || !player || !player.active) {
+                return;
+            }
+
+            var god = GODS[selectedGod];
+            var movingLeft = cursors.left.isDown || wasd.A.isDown;
+            var movingRight = cursors.right.isDown || wasd.D.isDown;
+            var jumpPressed = cursors.up.isDown || wasd.W.isDown || spaceKey.isDown;
+            var direction = movingLeft ? "left" : (movingRight ? "right" : "");
+
+            if (direction) {
+                var texture = direction === "left" ? god.leftTexture : god.rightTexture;
+                var animation = selectedGod + "-walk-" + direction;
+                if (player.texture.key !== texture) {
+                    player.setTexture(texture, 0);
+                }
+                player.setFlipX(god.mirrorRight && direction === "right");
+                player.setVelocityX(direction === "left" ? -230 : 230);
+                player.anims.play(animation, true);
+            } else {
+                player.setVelocityX(0);
+                player.anims.stop();
+                player.setFrame(0);
+            }
+
+            if (jumpPressed && player.body.touching.down) {
+                player.setVelocityY(-560);
+            }
+        }
+
+        function collectCollectible(playerSprite, collectible) {
+            collectible.disableBody(true, true);
+            score += 1;
+            document.getElementById("score").textContent = String(score);
+
+            if (bolts.countActive(true) === 0) {
+                advancePhase.call(this);
+            }
+        }
+
+        function advancePhase() {
+            phase += 1;
+            document.getElementById("phase").textContent = String(phase);
+            setPlatformLayout(this, (phase - 1) % PLATFORM_LAYOUTS.length);
+            player.setPosition(480, 530);
+            player.setVelocity(0, 0);
+
+            hazards.getChildren().slice().forEach(function (hazard) {
+                hazard.destroy();
+            });
+
+            bolts.children.iterate(function (child, index) {
+                var x = 45 + index * 96;
+                child.enableBody(true, x, Phaser.Math.Between(15, 120), true, true);
+                child.setScale(GODS[selectedGod].collectibleScale);
+                child.setBounceY(Phaser.Math.FloatBetween(0.35, 0.75));
+            });
+
+            showPhaseEffect(this);
+            spawnHazard(this);
+        }
+
+        function spawnHazard(scene) {
+            var hazardX = Phaser.Math.Between(120, WIDTH - 120);
+            var hazard = hazards.create(hazardX, 20, "hazard");
+            hazard.setScale(0.8);
+            hazard.setBounce(1);
+            hazard.setCollideWorldBounds(true);
+            hazard.setVelocity(Phaser.Math.Between(-180, 180), 20);
+            hazard.allowGravity = false;
+        }
+
+        function showPhaseEffect(scene) {
+            var banner = scene.add.text(WIDTH / 2, 112, "FASE " + phase, {
+                fontFamily: "Georgia, serif",
+                fontSize: "34px",
+                fontStyle: "bold",
+                color: "#fff1bd",
+                stroke: "#25203a",
+                strokeThickness: 6
+            }).setOrigin(0.5).setDepth(20).setScrollFactor(0);
+
+            scene.tweens.add({
+                targets: banner,
+                alpha: 0,
+                y: 82,
+                delay: 500,
+                duration: 700,
+                onComplete: function () {
+                    banner.destroy();
+                }
+            });
+
+            if (selectedGod === "poseidon") {
+                showTsunami(scene);
+                return;
+            }
+
+            if (selectedGod === "hades") {
+                playThunder();
+            }
+            showLightning(scene, selectedGod === "hades" ? 0xb77aff : 0xffe45c);
+        }
+
+        function showLightning(scene, color) {
+            scene.cameras.main.flash(180, 235, 240, 255, false);
+            var bolt = scene.add.graphics().setDepth(19).setScrollFactor(0);
+            var x = Phaser.Math.Between(240, WIDTH - 240);
+            bolt.lineStyle(8, color, 1);
+            bolt.beginPath();
+            bolt.moveTo(x, 0);
+            for (var y = 55; y < HEIGHT - 40; y += 55) {
+                x += Phaser.Math.Between(-55, 55);
+                bolt.lineTo(x, y);
+            }
+            bolt.lineTo(x + Phaser.Math.Between(-30, 30), HEIGHT);
+            bolt.strokePath();
+            bolt.lineStyle(2, 0xffffff, 0.95);
+            bolt.beginPath();
+            bolt.moveTo(x, 0);
+            bolt.lineTo(x + 10, 100);
+            bolt.strokePath();
+            scene.tweens.add({
+                targets: bolt,
+                alpha: 0,
+                delay: 80,
+                duration: 500,
+                onComplete: function () {
+                    bolt.destroy();
+                }
+            });
+        }
+
+        function showTsunami(scene) {
+            var wave = scene.add.graphics({ x: -210, y: 0 }).setDepth(18).setScrollFactor(0);
+            var waveWidth = 210;
+            wave.fillStyle(0x21c8e8, 0.78);
+            wave.beginPath();
+            wave.moveTo(0, HEIGHT - 145);
+            for (var x = 0; x <= waveWidth; x += 12) {
+                wave.lineTo(x, HEIGHT - 145 + Math.sin(x * 0.07) * 20);
+            }
+            wave.lineTo(waveWidth, HEIGHT);
+            wave.lineTo(0, HEIGHT);
+            wave.closePath();
+            wave.fillPath();
+            wave.lineStyle(5, 0xd9fbff, 0.95);
+            wave.beginPath();
+            for (var foamX = 0; foamX <= waveWidth; foamX += 12) {
+                var foamY = HEIGHT - 145 + Math.sin(foamX * 0.07) * 20;
+                if (foamX === 0) {
+                    wave.moveTo(foamX, foamY);
+                } else {
+                    wave.lineTo(foamX, foamY);
+                }
+            }
+            wave.strokePath();
+            scene.tweens.add({
+                targets: wave,
+                x: WIDTH + 20,
+                duration: 1500,
+                ease: "Sine.easeInOut",
+                onComplete: function () {
+                    wave.destroy();
+                }
+            });
+        }
+
+        function playThunder() {
+            if (!audioContext) {
+                return;
+            }
+
+            var now = audioContext.currentTime;
+            var duration = 1.4;
+            var buffer = audioContext.createBuffer(1, Math.floor(audioContext.sampleRate * duration), audioContext.sampleRate);
+            var data = buffer.getChannelData(0);
+            for (var index = 0; index < data.length; index += 1) {
+                data[index] = (Math.random() * 2 - 1) * (1 - index / data.length);
+            }
+
+            var noise = audioContext.createBufferSource();
+            var filter = audioContext.createBiquadFilter();
+            var volume = audioContext.createGain();
+            noise.buffer = buffer;
+            filter.type = "lowpass";
+            filter.frequency.setValueAtTime(600, now);
+            filter.frequency.exponentialRampToValueAtTime(75, now + duration);
+            volume.gain.setValueAtTime(0.001, now);
+            volume.gain.linearRampToValueAtTime(0.35, now + 0.04);
+            volume.gain.exponentialRampToValueAtTime(0.001, now + duration);
+            noise.connect(filter);
+            filter.connect(volume);
+            volume.connect(audioContext.destination);
+            noise.start(now);
+            noise.stop(now + duration);
+        }
+
+        function hitHazard() {
+            this.physics.pause();
+            player.setTint(0xff7777);
+            player.anims.stop();
+            gameOver = true;
+            document.getElementById("final-score").textContent = String(score);
+            document.getElementById("game-over").hidden = false;
+        }
+
+        function startGame(godKey) {
+            selectedGod = godKey;
+            gameStarted = true;
+            if (!audioContext) {
+                var AudioContextType = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextType) {
+                    audioContext = new AudioContextType();
+                }
+            }
+            if (audioContext && audioContext.state === "suspended") {
+                audioContext.resume();
+            }
+            document.getElementById("welcome").hidden = true;
+            document.getElementById("game-hud").hidden = false;
+            document.getElementById("game-over").hidden = true;
+
+            if (sceneReady) {
+                game.scene.getScene("Olympus").scene.restart();
+            }
+        }
+
+        function returnToMenu() {
+            gameStarted = false;
+            document.getElementById("game-hud").hidden = true;
+            document.getElementById("game-over").hidden = true;
+            document.getElementById("welcome").hidden = false;
+            if (sceneReady) {
+                game.scene.getScene("Olympus").scene.pause();
+            }
+        }
+
+        function restartGame() {
+            if (sceneReady) {
+                game.scene.getScene("Olympus").scene.restart();
+            }
+            document.getElementById("game-over").hidden = true;
+        }
+
+        document.querySelectorAll("[data-god]").forEach(function (button) {
+            button.addEventListener("click", function () {
+                startGame(button.getAttribute("data-god"));
+            });
+        });
+        document.getElementById("back-button").addEventListener("click", returnToMenu);
+        document.getElementById("restart-button").addEventListener("click", restartGame);
+    </script>
+</body>
+</html>
